@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Scouts: The Decibel Defenders</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        /* =========================================
+           🎨 CREATIVE THEME & VISUAL IDENTITY
+           ========================================= */
+        :root {
+            --bg-beige: #F5F2EB;
+            --safe-green: #7BA05B;
+            --danger-red: #d10404;
+            --risky-orange: #ffad42;
+            --special-yellow: #ffe942;
+            --ios-blue: #007AFF;
+            --text-dark: #1C1C1E;
+            --panel-bg: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-beige); color: var(--text-dark); height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        button { cursor: pointer; border: none; outline: none; transition: transform 0.1s ease, opacity 0.2s; }
+        button:active { transform: scale(0.95); }
+
+        /* =========================================
+           🎛️ SETUP SCREEN (LAUNCHPAD)
+           ========================================= */
+        #setup-screen {
+            background: var(--panel-bg); padding: 40px; border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 500px; z-index: 100;
+        }
+        h1.title { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
+        .timer-toggle { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .timer-btn { flex: 1; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 15px; background: #E5E5EA; color: var(--text-dark); }
+        .timer-btn.active { background: var(--ios-blue); color: white; }
+        .player-setup { text-align: left; margin-bottom: 20px; max-height: 250px; overflow-y: auto; }
+        .player-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .player-row input { flex: 1; padding: 12px; border: 1px solid #C7C7CC; border-radius: 10px; font-size: 16px; }
+        .player-row input[type="color"] { width: 50px; padding: 2px; height: 45px; }
+        .scout-notice { background: #FFF9D2; padding: 15px; border-radius: 15px; font-size: 14px; margin-bottom: 20px; border: 1px solid #F2D024; }
+        .start-btn { width: 100%; padding: 18px; background: #34C759; color: white; font-size: 20px; font-weight: bold; border-radius: 20px; box-shadow: 0 4px 15px rgba(52, 199, 89, 0.4); }
+
+        /* =========================================
+           🗺️ GAME SCREEN LAYOUT
+           ========================================= */
+        #game-wrapper { display: none; width: 100%; height: 100%; flex-direction: column; }
+        #top-section { display: flex; flex: 1; height: calc(100% - 100px); }
+
+        /* Left Sidebar & Controls */
+        #sidebar { width: 320px; background: var(--panel-bg); border-right: 2px solid #E5E5EA; display: flex; flex-direction: column; padding: 20px; }
+        
+        .control-panel { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        .ctrl-btn { padding: 8px 12px; font-size: 14px; border-radius: 10px; font-weight: bold; background: #E5E5EA; color: var(--text-dark); flex: 1; text-align: center; }
+        .ctrl-btn.active-sfx { background: var(--ios-blue); color: white; }
+        .ctrl-btn.danger { background: #FF3B30; color: white; }
+        
+        #master-timer { font-size: 48px; font-weight: 800; text-align: center; margin-bottom: 10px; padding: 15px; background: #F2F2F7; border-radius: 20px; transition: all 0.3s; }
+        #master-timer.danger { background: var(--danger-red); color: white; animation: pulse 1s infinite; }
+        #master-timer.paused { background: #FFCC00; color: #1C1C1E; animation: none; }
+        
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        #game-log { flex: 1; overflow-y: auto; background: #F2F2F7; border-radius: 15px; padding: 15px; font-size: 14px; line-height: 1.5; }
+        .log-entry { margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #E5E5EA; }
+
+        /* Main Board */
+        #board-container { flex: 1; padding: 20px; display: flex; justify-content: center; align-items: center; position: relative; }
+        .board-grid {
+            display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr);
+            width: 100%; max-width: 850px; aspect-ratio: 1; gap: 4px; background: #E5E5EA;
+            border: 4px solid #C7C7CC; border-radius: 10px; position: relative;
+        }
+
+        .center-logo { grid-column: 2 / 6; grid-row: 2 / 6; background: var(--bg-beige); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: 10px; }
+        .center-logo h2 { font-size: 38px; font-weight: 900; margin-bottom: 10px; }
+        .center-logo p { font-size: 45px; }
+
+        .tile {
+            background: white; display: flex; flex-direction: column; justify-content: flex-start; align-items: center;
+            padding: 8px 4px; font-size: 13px; font-weight: bold; text-align: center; border-radius: 4px; position: relative; word-wrap: break-word;
+        }
+        .tile.green { background: var(--safe-green); color: white; }
+        .tile.red { background: var(--danger-red); color: white; }
+        .tile.orange { background: var(--risky-orange); color: white; }
+        .tile.yellow { background: var(--special-yellow); color: #1C1C1E; }
+
+        /* LARGER FONTS & EMOJIS FOR TILES */
+        .tile-icon { font-size: 32px; margin: 2px 0; line-height: 1.1; }
+        .tile-name { font-size: 13px; line-height: 1.1; margin-bottom: 2px; }
+        .tile-db { font-size: 11px; font-weight: 900; }
+        .tile-number { font-size: 11px; opacity: 0.8; position: absolute; top: 4px; left: 4px; font-weight: bold;}
+        .tile-qr-icon { font-size: 14px; position: absolute; top: 4px; right: 4px; }
+        
+        .avatars-container { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; justify-content: center; padding-bottom: 5px; }
+        .avatar { width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* Bottom Dashboard */
+        #bottom-dock { height: 100px; background: var(--panel-bg); border-top: 2px solid #E5E5EA; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
+        #turn-indicator { font-size: 26px; font-weight: bold; display: flex; align-items: center; gap: 15px; }
+        .step-selector { display: flex; gap: 10px; }
+        .step-btn { width: 65px; height: 65px; border-radius: 15px; font-size: 22px; font-weight: bold; background: var(--ios-blue); color: white; box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3); }
+
+        /* =========================================
+           💥 MODALS & POPUPS
+           ========================================= */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: var(--bg-beige); width: 90%; max-width: 450px; max-height: 90vh; overflow-y: auto; border-radius: 30px; padding: 30px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: popIn 0.3s ease-out; position: relative; }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        .qr-container { background: white; padding: 15px; border-radius: 15px; display: inline-block; margin: 15px 0; border: 2px dashed #C7C7CC; }
+        .modal-btn { display: block; width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 12px; font-size: 16px; font-weight: bold; color: white; }
+        .btn-green { background: #34C759; } .btn-blue { background: var(--ios-blue); } .btn-gray { background: #8E8E93; } .btn-red { background: var(--danger-red); } .btn-orange { background: var(--risky-orange); } .btn-purple { background: #AF52DE; margin-top: 20px; }
+        .chance-list-btn { padding: 12px; font-size: 14px; text-align: left; }
+
+        /* =========================================
+           🏆 PODIUM SCREEN
+           ========================================= */
+        #tally-screen, #podium-screen { background: var(--bg-beige); text-align: center; padding: 40px; border-radius: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); width: 95%; max-width: 800px; z-index: 100; display: none; flex-direction: column; align-items: center; position: relative; overflow: hidden; }
+        .tally-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 15px; background: white; padding: 15px 20px; border-radius: 15px; }
+        .tally-row input { width: 90px; padding: 10px; font-size: 20px; text-align: center; }
+
+        .podium-container { display: flex; align-items: flex-end; justify-content: center; gap: 20px; height: 350px; margin-top: 40px; position: relative; z-index: 10; }
+        .podium-bar { color: white; font-weight: bold; width: 140px; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 15px; border-radius: 15px 15px 0 0; box-shadow: inset 0 -10px 30px rgba(0,0,0,0.3); font-size: 24px; }
+        .p1 { height: 280px; background: #FFD700; color: #000; position: relative; }
+        .p2 { height: 200px; background: #C0C0C0; color: #000; }
+        .p3 { height: 140px; background: #CD7F32; color: #fff; }
+
+        .spotlight { position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 300px; height: 600px; background: radial-gradient(ellipse at top, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%); z-index: 0; pointer-events: none; animation: sweep 4s infinite alternate ease-in-out; }
+        @keyframes sweep { 0% { transform: translateX(-80%) rotate(-15deg); } 100% { transform: translateX(-20%) rotate(15deg); } }
+        .confetti { position: absolute; width: 10px; height: 10px; background-color: #f00; z-index: 5; animation: fall linear forwards; }
+        @keyframes fall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <h1 class="title">Sound Scouts 🎧</h1>
+        <div class="timer-toggle">
+            <button class="timer-btn active" onclick="setTimerMode(5, this)">⏱️ 5 Mins<br><small>(Demo)</small></button>
+            <button class="timer-btn" onclick="setTimerMode(20, this)">⏳ 20 Mins<br><small>(Full Game)</small></button>
+        </div>
+        <div class="player-setup" id="player-inputs"></div>
+        <button class="modal-btn btn-gray" style="margin-bottom: 20px; width: auto; display: inline-block; padding: 5px 15px; border-radius: 20px;" onclick="addPlayer()">+ Add Player</button>
+        <div class="scout-notice">💡 <b>Scout Notice:</b> Pass out <b>10 physical tokens</b> and <b>2 protection cards</b> to each player before starting!</div>
+        <button class="start-btn" onclick="startGame()">🚀 START GAME!</button>
+    </div>
+
+    <div id="game-wrapper">
+        <div id="top-section">
+            <div id="sidebar">
+                <div class="control-panel">
+                    <button class="ctrl-btn active-sfx" id="btn-sfx" onclick="toggleSFX()">🔊 Sound: ON</button>
+                    <button class="ctrl-btn" id="btn-pause" onclick="togglePause()">⏸️ Pause</button>
+                    <button class="ctrl-btn danger" onclick="restartGame()">🔄 Restart</button>
+                </div>
+                <div id="master-timer">05:00</div>
+                <h3 style="margin-bottom: 10px;">📜 Game Log</h3>
+                <div id="game-log"></div>
+            </div>
+
+            <div id="board-container">
+                <div class="board-grid" id="board">
+                    <div class="center-logo">
+                        <h2>Sound Scouts</h2>
+                        <p>🎧 The Decibel Defenders</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="bottom-dock">
+            <div id="turn-indicator">
+                <div id="current-avatar" class="avatar" style="background: red; width: 35px; height: 35px;"></div>
+                <span id="current-name">Player 1's Turn</span>
+            </div>
+            <div class="step-selector">
+                <button class="step-btn" onclick="executeMove(1)">+1</button>
+                <button class="step-btn" onclick="executeMove(2)">+2</button>
+                <button class="step-btn" onclick="executeMove(3)">+3</button>
+                <button class="step-btn" onclick="executeMove(4)">+4</button>
+                <button class="step-btn" onclick="executeMove(5)">+5</button>
+                <button class="step-btn" onclick="executeMove(6)">+6</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="info-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 id="info-title" style="font-size: 32px; margin-bottom: 15px;">ℹ️ Info</h2>
+            <p id="info-desc" style="font-size: 20px; margin-bottom: 25px; line-height: 1.4;"></p>
+            <button class="modal-btn btn-blue" onclick="closeInfoModal()">[ OK / Continue ]</button>
+        </div>
+    </div>
+
+    <div id="safe-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 style="color: var(--safe-green); font-size: 32px;">✨ Safe Zone!</h2>
+            <p style="margin: 20px 0; font-size: 20px;">Your ears are resting here, enjoy the quiet!</p>
+            <p style="margin-bottom: 20px; color: #888; font-size: 16px;">(Give player +1 Token in real life)</p>
+            <button class="modal-btn btn-green" onclick="resolveAction('Rested safely')">[ Done / Next Player ]</button>
+        </div>
+    </div>
+
+    <div id="jail-modal" class="modal-overlay">
+        <div class="modal-box" style="border: 4px solid #1C1C1E;">
+            <h2 style="color: var(--text-dark); font-size: 32px;">⛓️ Noise Overload (Jail)</h2>
+            <p style="margin: 15px 0; font-size: 18px;">It's too loud! You are stuck!</p>
+            <button class="modal-btn btn-red" onclick="resolveAction('Deducted Tokens to escape Jail')">💔 Minus / Deduct Tokens</button>
+            <button class="modal-btn btn-blue" onclick="resolveAction('Used Out of Jail Chance Card')">🃏 Use "Out of Jail" Chance Card</button>
+            <button class="modal-btn btn-orange" onclick="resolveJailSkip()">⏳ Skip 1 Round</button>
+        </div>
+    </div>
+
+    <div id="danger-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 id="danger-title" style="color: var(--danger-red); font-size: 28px;">⚠️ Warning!</h2>
+            <p id="danger-db" style="font-weight: bold; margin-top: 10px; font-size: 18px;"></p>
+            <div class="qr-container" id="qr-render-area"></div>
+            <a id="danger-link" href="#" target="_blank" style="display: block; margin-bottom: 20px; color: var(--ios-blue); text-decoration: none; font-weight: bold;">[🔗 Open Sound Directly]</a>
+            <button class="modal-btn btn-blue" onclick="resolveAction('Used Protection Card')">🛡️ Use Physical Protection Card</button>
+            <button class="modal-btn btn-green" onclick="resolveAction('Answered Question Card')">🧠 Answer Physical Question Card</button>
+            <button class="modal-btn btn-red" onclick="resolveAction('Deducted Token')">💔 Straight Deduct Token</button>
+        </div>
+    </div>
+
+    <div id="chance-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 style="font-size: 32px; margin-bottom: 15px;">🃏 Chance Card!</h2>
+            <p style="font-size: 18px; margin-bottom: 25px;">Which physical card did you draw?</p>
+            <button class="modal-btn btn-green" style="font-size: 20px; padding: 20px;" onclick="showGoodCards()">🌟 Drew a GOOD Card</button>
+            <button class="modal-btn btn-red" style="font-size: 20px; padding: 20px;" onclick="showBadCards()">💀 Drew a BAD Card</button>
+        </div>
+    </div>
+
+    <div id="good-card-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 style="color: var(--safe-green); font-size: 26px; margin-bottom: 15px;">🌟 Select Your Good Card:</h2>
+            <button class="modal-btn btn-green chance-list-btn" onclick="applyChance('good', 1)">1. Go to nearest Green (Safe) Zone</button>
+            <button class="modal-btn btn-blue chance-list-btn" onclick="applyChance('good', 2)">2. Reset health back to 10 Tokens</button>
+            <button class="modal-btn btn-blue chance-list-btn" onclick="applyChance('good', 3)">3. Collect 1 Token from every player</button>
+            <button class="modal-btn btn-blue chance-list-btn" onclick="applyChance('good', 4)">4. Keep: Skip right out of Jail</button>
+            <button class="modal-btn btn-blue chance-list-btn" onclick="applyChance('good', 5)">5. Keep: Extra Protection Card</button>
+            <button class="modal-btn btn-blue chance-list-btn" onclick="applyChance('good', 6)">6. Keep: Skip 1 Red Zone</button>
+        </div>
+    </div>
+
+    <div id="bad-card-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 style="color: var(--danger-red); font-size: 26px; margin-bottom: 15px;">💀 Select Your Bad Card:</h2>
+            <button class="modal-btn btn-red chance-list-btn" onclick="applyChance('bad', 1)">1. Discard 1 Protection Card</button>
+            <button class="modal-btn btn-orange chance-list-btn" onclick="applyChance('bad', 2)">2. Go directly to Jail</button>
+            <button class="modal-btn btn-orange chance-list-btn" onclick="applyChance('bad', 3)">3. Sit back and rest (Skip 1 Round)</button>
+            <button class="modal-btn btn-red chance-list-btn" onclick="applyChance('bad', 4)">4. Hand over 1 Token to every player</button>
+            <button class="modal-btn btn-red chance-list-btn" onclick="applyChance('bad', 5)">5. Go directly to the nearest Red Zone</button>
+            <button class="modal-btn btn-red chance-list-btn" onclick="applyChance('bad', 6)">6. Lose 1 Token</button>
+        </div>
+    </div>
+
+    <div id="tally-screen" class="modal-overlay">
+        <div style="width: 100%; max-width: 600px; background: var(--bg-beige); padding: 40px; border-radius: 30px;">
+            <h1 style="font-size: 40px; margin-bottom: 10px;">⏰ Time's Up!</h1>
+            <p style="margin-bottom: 30px; font-size: 20px;">Count your physical tokens and enter them below!</p>
+            <div id="tally-inputs"></div>
+            <button class="start-btn" style="margin-top: 20px;" onclick="showPodium()">🏆 View Podium</button>
+        </div>
+    </div>
+
+    <div id="podium-screen" class="modal-overlay">
+        <div style="width: 100%; max-width: 800px; text-align: center; background: var(--bg-beige); padding: 50px; border-radius: 30px; position: relative; overflow: hidden;">
+            <div class="spotlight"></div>
+            <h1 style="font-size: 50px; position: relative; z-index: 10;">🎉 The Winners! 🎉</h1>
+            <div class="podium-container" id="podium-bars"></div>
+            <button class="modal-btn btn-purple" style="position: relative; z-index: 10; margin-top: 30px; width: 250px; margin-left: auto; margin-right: auto;" onclick="location.reload()">🔄 Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // --- ASSET CONFIGURATION ---
+        const QR_ASSETS = {
+            1: "https://drive.google.com/file/d/14_GyVifyezi5OFWRf6OrJ08OTdSsRZSm/view",
+            4: "https://drive.google.com/file/d/1yigLAkGCwTBZwfctI4DPC4lhkRr6kJ7g/view",
+            6: "https://drive.google.com/file/d/1rRmZ7Jpjss2yX7kVpgi2cza71uOFkrIl/view",
+            8: "https://drive.google.com/file/d/1dUIW119mSZQ8P3kRNb_RCHeaUNuK17vm/view",
+            9: "https://drive.google.com/file/d/1He_vKdhU5BwgUAIFHj7ylKAHzN5yvkAY/view",
+            11: "https://drive.google.com/file/d/1S2txAxRVbivEmp6AfZ7jzxIPpknlgEbS/view",
+            13: "https://drive.google.com/file/d/13g34sKBqAUoi2kZWj36qXgA9dRu_5uR4/view",
+            14: "https://drive.google.com/file/d/1F_RDp7zDGnmZ8nsFSrQKzSzLadBBVGUl/view",
+            16: "https://drive.google.com/file/d/1kjhD3wNT_YoZu_ksR4z3R7J8_LAg3mJl/view",
+            17: "https://drive.google.com/file/d/1xfRWXA7u0IhOQJID6EExO9ROVcf6R2-g/view",
+            19: "https://drive.google.com/file/d/1dwu3OpJuux0OYqe6abryQT7dH-rZHoIl/view"
+        };
+
+        const GRID_POS = [ [1,1],[2,1],[3,1],[4,1],[5,1],[6,1], [6,2],[6,3],[6,4],[6,5], [6,6],[5,6],[4,6],[3,6],[2,6],[1,6], [1,5],[1,4],[1,3],[1,2] ];
+
+        const TILES = [
+            { id: 0, name: "START", color: "green", icon: "🏁" },
+            { id: 1, name: "Karaoke", color: "red", icon: "🚗", db: "94 dB" },
+            { id: 2, name: "Bedroom", color: "green", icon: "🛏️", db: "30-35 dB" },
+            { id: 3, name: "Classroom", color: "green", icon: "🏫", db: "60-65 dB" },
+            { id: 4, name: "Arcade", color: "red", icon: "🕹️", db: "90 dB+" },
+            { id: 5, name: "CHANCE", color: "yellow", icon: "🃏" },
+            { id: 6, name: "Cinema", color: "orange", icon: "🎬", db: "80-85 dB" },
+            { id: 7, name: "Art Gallery", color: "green", icon: "🖼️", db: "40-45 dB" },
+            { id: 8, name: "Shooting", color: "red", icon: "💥", db: "140 dB+" },
+            { id: 9, name: "Fitness", color: "orange", icon: "🏋️", db: "75-80 dB" },
+            { id: 10, name: "JAIL", color: "red", icon: "⛓️" },
+            { id: 11, name: "Gaming", color: "red", icon: "🎧", db: "85-100 dB" },
+            { id: 12, name: "Jogging", color: "green", icon: "🏃‍♂️", db: "45-50 dB" },
+            { id: 13, name: "Concert", color: "red", icon: "🎸", db: "104 dB+" },
+            { id: 14, name: "Night Market", color: "orange", icon: "🏪", db: "75-80 dB" },
+            { id: 15, name: "FREE TOKEN", color: "yellow", icon: "🎁" },
+            { id: 16, name: "Firecracker", color: "red", icon: "🎆", db: "140 dB+" },
+            { id: 17, name: "Cafe", color: "orange", icon: "☕", db: "75 dB+" },
+            { id: 18, name: "Library", color: "green", icon: "📚", db: "40 dB" },
+            { id: 19, name: "Public Bus", color: "orange", icon: "🚌", db: "75-80 dB" }
+        ];
+
+        // --- GAME STATE ---
+        let gameTimeMinutes = 5, totalSeconds = 0, timerInterval;
+        let players = [], currentPlayerIdx = 0;
+        let isPaused = false, sfxEnabled = true;
+        let pendingTileResolution = null; 
+
+        // --- AUDIO ENGINE ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTone(freq, type, duration, vol=0.1, slideDown=false) {
+            if(!sfxEnabled || audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            if(slideDown) osc.frequency.exponentialRampToValueAtTime(freq/2, audioCtx.currentTime + duration);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function sfxMove() { playTone(600, 'sine', 0.1, 0.1); }
+        function sfxClick() { playTone(900, 'square', 0.1, 0.05); }
+        function sfxSprinkle() { [400, 600, 800, 1000].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.2, 0.05), i*80)); }
+        function sfxEvil() { playTone(150, 'sawtooth', 0.8, 0.2, true); playTone(100, 'square', 0.8, 0.2, true); }
+        function sfxWinBGM() {
+            if(!sfxEnabled) return;
+            const notes = [523, 659, 783, 1046];
+            let time = 0;
+            for(let i=0; i<12; i++) {
+                setTimeout(() => playTone(notes[i%4], 'sine', 0.3, 0.1), time);
+                time += 200;
+            }
+        }
+        function initAudio() { if(audioCtx.state === 'suspended') audioCtx.resume(); }
+
+        // --- UI & INITIALIZATION ---
+        window.onload = () => { addPlayer("Alex", "#FF2D55"); addPlayer("Sarah", "#007AFF"); renderBoard(); };
+
+        function setTimerMode(mins, btn) { sfxClick(); gameTimeMinutes = mins; document.querySelectorAll('.timer-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+        function addPlayer(name="", color="#000") { sfxClick(); const c = document.getElementById('player-inputs'); if(c.children.length >= 4) return; const colors = ["#FF2D55", "#007AFF", "#FFCC00", "#AF52DE"]; if(color==="#000") color = colors[c.children.length] || "#34C759"; c.innerHTML += `<div class="player-row"><input type="text" class="p-name" placeholder="Player ${c.children.length+1}" value="${name}"><input type="color" class="p-color" value="${color}"></div>`; }
+
+        function renderBoard() {
+            const board = document.getElementById('board');
+            TILES.forEach((t, i) => {
+                const div = document.createElement('div'); div.className = `tile ${t.color}`; div.style.gridColumn = GRID_POS[i][0]; div.style.gridRow = GRID_POS[i][1];
+                let qrHtml = QR_ASSETS[i] ? `<div class="tile-qr-icon">🔍</div>` : "";
+                let dbHtml = t.db ? `<div class="tile-db">${t.db}</div>` : "";
+                div.innerHTML = `<div class="tile-number">${i}</div>${qrHtml}<div class="tile-icon">${t.icon}</div><div class="tile-name">${t.name}</div>${dbHtml}<div class="avatars-container" id="avatar-box-${i}"></div>`;
+                board.appendChild(div);
+            });
+        }
+
+        function startGame() {
+            initAudio(); sfxClick();
+            const rows = document.querySelectorAll('.player-row'); players = [];
+            rows.forEach((row, idx) => { players.push({ name: row.querySelector('.p-name').value || `P${idx+1}`, color: row.querySelector('.p-color').value, position: 0, skipTurn: false }); });
+            if(players.length < 2) return alert("Need at least 2 players!");
+            document.getElementById('setup-screen').style.display = 'none'; document.getElementById('game-wrapper').style.display = 'flex';
+            totalSeconds = gameTimeMinutes * 60; updateTimerDisplay(); timerInterval = setInterval(tickTimer, 1000);
+            logMsg("🚀 Game Started!"); updateAvatars(); updateBottomDock();
+        }
+
+        // --- CONTROLS ---
+        function toggleSFX() {
+            sfxEnabled = !sfxEnabled;
+            const btn = document.getElementById('btn-sfx');
+            btn.innerText = sfxEnabled ? "🔊 Sound: ON" : "🔇 Sound: OFF";
+            btn.className = sfxEnabled ? "ctrl-btn active-sfx" : "ctrl-btn";
+            sfxClick();
+        }
+
+        function togglePause() {
+            sfxClick(); isPaused = !isPaused;
+            const btn = document.getElementById('btn-pause'); const tmr = document.getElementById('master-timer');
+            if(isPaused) { clearInterval(timerInterval); btn.innerText = "▶️ Resume"; btn.classList.add('active-sfx'); tmr.classList.add('paused'); }
+            else { timerInterval = setInterval(tickTimer, 1000); btn.innerText = "⏸️ Pause"; btn.classList.remove('active-sfx'); tmr.classList.remove('paused'); }
+        }
+
+        function restartGame() {
+            sfxClick(); if(!confirm("Restart the whole game?")) return;
+            clearInterval(timerInterval); isPaused = false;
+            document.getElementById('game-log').innerHTML = ""; currentPlayerIdx = 0;
+            document.getElementById('btn-pause').innerText = "⏸️ Pause"; document.getElementById('btn-pause').classList.remove('active-sfx');
+            document.getElementById('master-timer').classList.remove('danger', 'paused');
+            document.getElementById('game-wrapper').style.display = 'none'; hideAllModals();
+            document.getElementById('setup-screen').style.display = 'block';
+        }
+
+        // --- TIMER ---
+        function tickTimer() {
+            totalSeconds--; updateTimerDisplay();
+            const tmr = document.getElementById('master-timer');
+            if(totalSeconds === 10) tmr.classList.add('danger');
+            if(totalSeconds <= 10 && totalSeconds > 0) playTone(800, 'square', 0.05, 0.05);
+            if(totalSeconds <= 0) { clearInterval(timerInterval); triggerEndGame(); }
+        }
+        function updateTimerDisplay() {
+            const m = Math.floor(Math.max(0, totalSeconds)/60).toString().padStart(2, '0');
+            const s = (Math.max(0, totalSeconds)%60).toString().padStart(2, '0');
+            document.getElementById('master-timer').innerText = `${m}:${s}`;
+        }
+        function logMsg(msg) { const log = document.getElementById('game-log'); log.innerHTML += `<div class="log-entry">${msg}</div>`; log.scrollTop = log.scrollHeight; }
+
+        // --- MOVEMENT & LOGIC ---
+        function updateAvatars() {
+            for(let i=0; i<20; i++) document.getElementById(`avatar-box-${i}`).innerHTML = "";
+            players.forEach(p => { const av = document.createElement('div'); av.className = 'avatar'; av.style.background = p.color; document.getElementById(`avatar-box-${p.position}`).appendChild(av); });
+        }
+        function updateBottomDock() {
+            const p = players[currentPlayerIdx];
+            document.getElementById('current-avatar').style.background = p.color;
+            if(p.skipTurn) { document.getElementById('current-name').innerText = `⚠️ ${p.name} is skipping a round!`; setTimeout(() => { p.skipTurn = false; nextTurn(); }, 2000); }
+            else { document.getElementById('current-name').innerText = `${p.name}'s Turn`; }
+        }
+
+        function executeMove(steps) {
+            initAudio(); sfxMove();
+            const p = players[currentPlayerIdx];
+            if(p.skipTurn) return; // Guard
+            
+            const oldPos = p.position;
+            p.position = (p.position + steps) % 20;
+            const tile = TILES[p.position];
+            
+            logMsg(`<b><span style="color:${p.color}">${p.name}</span></b> moved +${steps} and landed on <b>${tile.icon} ${tile.name}</b>`);
+            updateAvatars();
+
+            if(p.position < oldPos && p.position !== 0) {
+                pendingTileResolution = tile;
+                showInfoModal("🏁 Round Completed!", "You passed START! Remember to give the player <b>1 Free Token</b>.");
+            } else {
+                resolveTile(tile);
+            }
+        }
+
+        function resolveTile(tile) {
+            setTimeout(() => {
+                if(tile.id === 0) { sfxSprinkle(); showInfoModal("🏁 START", "Landed on Start! Remember to give the player <b>1 Free Token</b>."); }
+                else if(tile.id === 5) { sfxClick(); document.getElementById('chance-modal').style.display = 'flex'; }
+                else if(tile.id === 15) { sfxSprinkle(); showInfoModal("🎁 Free Token!", "Yay! Remember to give the player <b>1 Free Token</b> in real life."); }
+                else if(tile.id === 10) { sfxEvil(); document.getElementById('jail-modal').style.display = 'flex'; }
+                else if(tile.color === 'green') { sfxSprinkle(); document.getElementById('safe-modal').style.display = 'flex'; }
+                else if(tile.color === 'red' || tile.color === 'orange') { if(tile.color==='red') sfxEvil(); openDangerModal(tile); }
+            }, 500);
+        }
+
+        function hideAllModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
+        
+        function showInfoModal(title, desc) { hideAllModals(); document.getElementById('info-title').innerText = title; document.getElementById('info-desc').innerHTML = desc; document.getElementById('info-modal').style.display = 'flex'; }
+        function closeInfoModal() {
+            sfxClick(); hideAllModals();
+            if(pendingTileResolution) { const t = pendingTileResolution; pendingTileResolution = null; resolveTile(t); } else { nextTurn(); }
+        }
+
+        // --- NEW CHANCE CARD SYSTEM ---
+        function showGoodCards() { hideAllModals(); document.getElementById('good-card-modal').style.display = 'flex'; }
+        function showBadCards() { hideAllModals(); document.getElementById('bad-card-modal').style.display = 'flex'; }
+        
+        function applyChance(type, index) {
+            hideAllModals();
+            const p = players[currentPlayerIdx];
+            sfxClick();
+            
+            if (type === 'good') {
+                logMsg(`<b>${p.name}</b> used Good Card #${index}`);
+                if (index === 1) { moveToNearestColor('green'); return; }
+                if (index === 2) { showInfoModal("🌟 Max Health!", "Reminder: Give player remaining tokens until they have exactly 10 tokens!"); return; }
+                if (index === 3) { showInfoModal("🌟 Wealthy Scout!", "Reminder: Collect 1 token from each other player!"); return; }
+                if (index === 4) { showInfoModal("🌟 Jailbreak!", "Keep this card! Use it later when trapped in Jail to escape for free."); return; }
+                if (index === 5) { showInfoModal("🌟 Shield Up!", "Congrats, you earned an extra Protection Card! Use it when you land in an Orange or Red zone."); return; }
+                if (index === 6) { showInfoModal("🌟 Route Planned!", "Keep this card! When you roll the dice and would land in a Red zone, you can choose to land in a Green zone instead."); return; }
+            } else if (type === 'bad') {
+                logMsg(`<b>${p.name}</b> suffered Bad Card #${index}`);
+                if (index === 1) { showInfoModal("💀 Gear Lost!", "Reminder: Discard 1 Protection Card. If you don't have one, lose 1 Token instead."); return; }
+                if (index === 2) { 
+                    p.position = 10; updateAvatars();
+                    logMsg(`<b>${p.name}</b> sent directly to Jail!`);
+                    resolveTile(TILES[10]); 
+                    return; 
+                }
+                if (index === 3) { p.skipTurn = true; showInfoModal("💀 Forced Rest!", "Sit back and rest, you must skip 1 round of play."); return; }
+                if (index === 4) { showInfoModal("💀 Apology Penalty!", "Reminder: Distribute 1 token to every other player. If you don't have enough tokens, give them a protection card instead."); return; }
+                if (index === 5) { moveToNearestColor('red'); return; }
+                if (index === 6) { showInfoModal("💀 Ouch!", "Reminder: Give 1 token back to the bank."); return; }
+            }
+        }
+
+        function moveToNearestColor(targetColor) {
+            let p = players[currentPlayerIdx];
+            let foundPos = p.position;
+            for(let i=1; i<=20; i++) {
+                let checkPos = (p.position + i) % 20;
+                if(TILES[checkPos].color === targetColor) { foundPos = checkPos; break; }
+            }
+            p.position = foundPos; updateAvatars();
+            logMsg(`↳ Jumped directly to ${TILES[foundPos].icon} ${TILES[foundPos].name}`);
+            resolveTile(TILES[foundPos]); // Triggers new modal naturally
+        }
+
+        // --- MODAL RESOLUTIONS ---
+        function openDangerModal(tile) {
+            document.getElementById('danger-title').innerText = `${tile.icon} ${tile.name}`; document.getElementById('danger-db').innerText = `Hazard Level: ${tile.db || 'Unknown'}`;
+            const link = document.getElementById('danger-link'); const qrArea = document.getElementById('qr-render-area');
+            if(QR_ASSETS[tile.id]) { link.href = QR_ASSETS[tile.id]; link.style.display = "block"; qrArea.innerHTML = ""; new QRCode(qrArea, { text: QR_ASSETS[tile.id], width: 150, height: 150 }); } 
+            else { link.style.display = "none"; qrArea.innerHTML = "No Audio Link"; }
+            document.getElementById('danger-modal').style.display = 'flex';
+        }
+
+        function resolveAction(text) { sfxClick(); logMsg(`↳ <i>${text}</i>`); hideAllModals(); nextTurn(); }
+        function resolveJailSkip() { const p = players[currentPlayerIdx]; p.skipTurn = true; resolveAction('Skipped next round for Jail Penalty'); }
+
+        function nextTurn() { currentPlayerIdx = (currentPlayerIdx + 1) % players.length; updateBottomDock(); }
+
+        // --- ENDGAME ---
+        function triggerEndGame() {
+            sfxEvil(); document.getElementById('game-wrapper').style.display = 'none';
+            const tallyContainer = document.getElementById('tally-inputs'); tallyContainer.innerHTML = '';
+            players.forEach((p, i) => { tallyContainer.innerHTML += `<div class="tally-row"><span style="font-size:24px; font-weight:bold; color:${p.color}">${p.name}</span><input type="number" id="tally-val-${i}" value="0" min="0"> Tokens</div>`; });
+            document.getElementById('tally-screen').style.display = 'flex';
+        }
+
+        function showPodium() {
+            sfxClick(); sfxWinBGM(); document.getElementById('tally-screen').style.display = 'none';
+            players.forEach((p, i) => { p.score = parseInt(document.getElementById(`tally-val-${i}`).value) || 0; });
+            const sorted = [...players].sort((a,b) => b.score - a.score);
+            const podium = document.getElementById('podium-bars'); podium.innerHTML = '';
+            
+            const order = [];
+            if(sorted.length >= 2) order.push({ p: sorted[1], rank: 'p2', title: '2nd' });
+            if(sorted.length >= 1) order.push({ p: sorted[0], rank: 'p1', title: '1st' });
+            if(sorted.length >= 3) order.push({ p: sorted[2], rank: 'p3', title: '3rd' });
+
+            order.forEach(item => {
+                let spotlightHtml = item.rank === 'p1' ? `<div style="font-size:40px; position:absolute; top:-60px; left:50%; transform:translateX(-50%);">👑</div>` : "";
+                podium.innerHTML += `<div style="text-align:center; position:relative; z-index:10;"><div style="margin-bottom:10px; font-weight:bold; font-size:22px;">${item.p.name}</div><div style="margin-bottom:10px; font-size:20px;">🪙 ${item.p.score}</div><div class="podium-bar ${item.rank}">${spotlightHtml}<h2>${item.title}</h2></div></div>`;
+            });
+            document.getElementById('podium-screen').style.display = 'flex'; generateConfetti();
+        }
+
+        function generateConfetti() {
+            const screen = document.getElementById('podium-screen'); const colors = ['#FFC700', '#FF0000', '#2E3192', '#41BBC7'];
+            for(let i=0; i<100; i++) {
+                let conf = document.createElement('div'); conf.className = 'confetti';
+                conf.style.left = Math.random() * 100 + 'vw'; conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.animationDuration = (Math.random() * 3 + 2) + 's'; conf.style.animationDelay = (Math.random() * 2) + 's';
+                screen.appendChild(conf);
+            }
+        }
+    </script>
+</body>
+</html>
